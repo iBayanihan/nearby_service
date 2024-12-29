@@ -1,0 +1,21 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.xenikii.nearby_service">
+    <!-- required to use Wi-fi Direct on Android 13+ -->
+    <uses-permission android:name="android.permission.NEARBY_WIFI_DEVICES" />
+    <!-- required to use Wi-fi Direct -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <!-- to check if Wi-fi is enabled -->
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <!-- to work with Wi-fi Direct API -->
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+    <!-- to save the received files -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <!-- to save the received files -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <!-- to use sockets for data transfer -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <uses-feature
+        android:name="android.hardware.wifi.direct"
+        android:required="true" />
+</manifest>
