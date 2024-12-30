@@ -25,8 +25,9 @@ apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
 
 android {
-    namespace 'com.example.nearbyservice'
     compileSdk 33
+
+    namespace 'com.xenikii.nearby_service'
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
