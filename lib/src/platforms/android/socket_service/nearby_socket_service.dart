@@ -125,7 +125,7 @@ class NearbySocketService {
   /// for encryption, we can utilize the following
   /// import 'package:encrypt/encrypt.dart' as encrypt;
 
-  Future<bool> send(OutgoingNearbyMessage message, String recieverId) async {
+  Future<bool> send(OutgoingNearbyMessage message, [String? recieverId]) async {
   if (message.isValid) {
     if (_socket != null && message.receiver.id == _connectedDeviceId) {
       final sender = await _service.getCurrentDeviceInfo();
@@ -137,7 +137,7 @@ class NearbySocketService {
 
         // Encrypt the JSON string
         final algorithm = AesGcm.with256bits();
-        final secretKeyBytes = utf8.encode(recieverId); // add here the id of the receiver
+        final secretKeyBytes = recieverId != null ? utf8.encode(recieverId) : utf8.encode('iBayanihan');
         final secretKey = SecretKey(secretKeyBytes);
         final nonce = algorithm.newNonce();
         final secretBox = await algorithm.encrypt(
@@ -293,7 +293,7 @@ class NearbySocketService {
   // }
 
 /// for encryption, we can utilize the following
-void _createSocketSubscription(NearbyServiceMessagesListener socketListener, String myId) {
+void _createSocketSubscription(NearbyServiceMessagesListener socketListener, [String? myId]) {
   Logger.debug('Starting socket subscription');
 
   if (_connectedDeviceId != null) {
@@ -306,7 +306,8 @@ void _createSocketSubscription(NearbyServiceMessagesListener socketListener, Str
 
           // Decrypt the binary data
           final algorithm = AesGcm.with256bits();
-          final secretKeyBytes = utf8.encode(myId); // add here the id of the current user
+          final secretKeyBytes = myId != null ? utf8.encode(myId) : utf8.encode('iBayanihan'); // add here the id of the current user
+
           final secretKey = SecretKey(secretKeyBytes);
           final secretBox = SecretBox.fromConcatenation(binaryData, nonceLength: 12, macLength: 16);
           final clearText = await algorithm.decrypt(
