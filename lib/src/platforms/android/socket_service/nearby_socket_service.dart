@@ -127,6 +127,8 @@ class NearbySocketService {
 
   Future<bool> send(OutgoingNearbyMessage message, [String? recieverId]) async {
   if (message.isValid) {
+    // log the message
+    Logger.debug('Sending message: $message');
     if (_socket != null && message.receiver.id == _connectedDeviceId) {
       final sender = await _service.getCurrentDeviceInfo();
       if (sender != null) {
