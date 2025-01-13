@@ -125,8 +125,9 @@ class NearbySocketService {
   /// for encryption, we can utilize the following
   /// import 'package:encrypt/encrypt.dart' as encrypt;
 
-  Future<bool> send(OutgoingNearbyMessage message) async {
+  Future<bool> send(OutgoingNearbyMessage message, [String? recieverId]) async {
   if (message.isValid) {
+    // log the message
     Logger.debug('Sending message: $message');
     if (_socket != null && message.receiver.id == _connectedDeviceId) {
       final sender = await _service.getCurrentDeviceInfo();
@@ -138,7 +139,7 @@ class NearbySocketService {
 
         // Encrypt the JSON string
         final algorithm = AesGcm.with256bits();
-        final secretKeyBytes = utf8.encode('iBayanihan' * 4);
+        final secretKeyBytes = recieverId != null ? utf8.encode(recieverId) : utf8.encode('iBayanihan' * 4);
         final secretKey = SecretKey(secretKeyBytes);
         final nonce = algorithm.newNonce();
         final secretBox = await algorithm.encrypt(
@@ -294,7 +295,7 @@ class NearbySocketService {
   // }
 
 /// for encryption, we can utilize the following
-void _createSocketSubscription(NearbyServiceMessagesListener socketListener) {
+void _createSocketSubscription(NearbyServiceMessagesListener socketListener, [String? myId]) {
   Logger.debug('Starting socket subscription');
 
   if (_connectedDeviceId != null) {
@@ -307,7 +308,8 @@ void _createSocketSubscription(NearbyServiceMessagesListener socketListener) {
 
           // Decrypt the binary data
           final algorithm = AesGcm.with256bits();
-          final secretKeyBytes = utf8.encode('iBayanihan' * 4);
+          // final secretKeyBytes = myId != null ? utf8.encode(myId) : utf8.encode('iBayanihan' * 4); // add here the id of the current user
+          final secretKeyBytes = myId != null ? utf8.encode(myId) : utf8.encode('iBayanihan' * 4); // add here the id of the current user
           final secretKey = SecretKey(secretKeyBytes);
           final secretBox = SecretBox.fromConcatenation(binaryData, nonceLength: 12, macLength: 16);
           final clearText = await algorithm.decrypt(
@@ -323,8 +325,6 @@ void _createSocketSubscription(NearbyServiceMessagesListener socketListener) {
             content: content,
             sender: sender,
           );
-          receivedMessage.content = NearbyMessageContent.fromJson(jsonData['content']);
-          Logger.debug('Received message: $receivedMessage');
           _handleFilesMessage(receivedMessage);
           socketListener.onData(receivedMessage);
         } catch (e) {
