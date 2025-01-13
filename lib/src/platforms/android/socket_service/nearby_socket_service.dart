@@ -127,7 +127,6 @@ class NearbySocketService {
 
   Future<bool> send(OutgoingNearbyMessage message, [String? recieverId]) async {
   if (message.isValid) {
-    // log the message
     Logger.debug('Sending message: $message');
     if (_socket != null && message.receiver.id == _connectedDeviceId) {
       final sender = await _service.getCurrentDeviceInfo();
@@ -139,8 +138,7 @@ class NearbySocketService {
 
         // Encrypt the JSON string
         final algorithm = AesGcm.with256bits();
-        // final secretKeyBytes = recieverId != null ? utf8.encode(recieverId) : utf8.encode('iBayanihan');
-        final secretKeyBytes = recieverId != null ? utf8.encode('iBayanihan') : utf8.encode('iBayanihan');
+        final secretKeyBytes = recieverId != null ? utf8.encode(recieverId) : utf8.encode('default-secret-key');
         final secretKey = SecretKey(secretKeyBytes);
         final nonce = algorithm.newNonce();
         final secretBox = await algorithm.encrypt(
@@ -149,7 +147,8 @@ class NearbySocketService {
           nonce: nonce,
         );
 
-        final binaryData = Uint8List.fromList(secretBox.concatenation());
+        // Concatenate nonce and encrypted data
+        final binaryData = Uint8List.fromList(nonce + secretBox.concatenation());
         Logger.debug('Sending encrypted binary data: $binaryData');
         _socket!.add(binaryData);
         _handleFilesMessage(message);
@@ -309,14 +308,18 @@ void _createSocketSubscription(NearbyServiceMessagesListener socketListener, [St
 
           // Decrypt the binary data
           final algorithm = AesGcm.with256bits();
-          // final secretKeyBytes = myId != null ? utf8.encode(myId) : utf8.encode('iBayanihan'); // add here the id of the current user
-          final secretKeyBytes = myId != null ? utf8.encode('iBayanihan') : utf8.encode('iBayanihan');
-
+          final secretKeyBytes = myId != null ? utf8.encode(myId) : utf8.encode('default-secret-key');
           final secretKey = SecretKey(secretKeyBytes);
-          final secretBox = SecretBox.fromConcatenation(binaryData, nonceLength: 12, macLength: 16);
+
+          // Extract nonce and encrypted data
+          final nonce = binaryData.sublist(0, 12);
+          final encryptedData = binaryData.sublist(12);
+
+          final secretBox = SecretBox.fromConcatenation(encryptedData, nonceLength: 12, macLength: 16);
           final clearText = await algorithm.decrypt(
             secretBox,
             secretKey: secretKey,
+            nonce: nonce,
           );
 
           final jsonString = utf8.decode(clearText);
