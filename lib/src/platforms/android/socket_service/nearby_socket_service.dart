@@ -138,19 +138,25 @@ class NearbySocketService {
         });
 
         // Encrypt the JSON string
-        final algorithm = AesGcm.with256bits();
-        final secretKeyBytes = recieverId != null ? utf8.encode(recieverId) : utf8.encode('iBayanihan' * 4);
-        final secretKey = SecretKey(secretKeyBytes);
-        final nonce = algorithm.newNonce();
-        final secretBox = await algorithm.encrypt(
-          utf8.encode(jsonString),
-          secretKey: secretKey,
-          nonce: nonce,
-        );
+        // final algorithm = AesGcm.with256bits();
+        // final secretKeyBytes = recieverId != null ? utf8.encode(recieverId) : utf8.encode('iBayanihan' * 4);
+        // final secretKey = SecretKey(secretKeyBytes);
+        // final nonce = algorithm.newNonce();
+        // final secretBox = await algorithm.encrypt(
+        //   utf8.encode(jsonString),
+        //   secretKey: secretKey,
+        //   nonce: nonce,
+        // );
 
-        final binaryData = Uint8List.fromList(secretBox.concatenation());
-        Logger.debug('Sending encrypted binary data: $binaryData');
-        _socket!.add(binaryData);
+        final key = Key.fromUtf8('iBayanihan' * 4);
+
+        final iv = IV.fromUtf8('iBayanihan' * 4);
+        final encrypter = Encrypter(AES(key));
+
+        final encrypted = encrypter.encrypt(jsonString, iv: iv);
+
+        Logger.debug('Sending encrypted binary data: $encrypted');
+        _socket!.add(encrypted);
         _handleFilesMessage(message);
       }
       return true;
@@ -304,20 +310,20 @@ void _createSocketSubscription(NearbyServiceMessagesListener socketListener, [St
         .listen(
       (binaryData) async {
         try {
-          Logger.debug('Received encrypted binary data: $binaryData');
+          Logger.debug('Received encrypted data: $binaryData');
 
           // Decrypt the binary data
-          final algorithm = AesGcm.with256bits();
-          // final secretKeyBytes = myId != null ? utf8.encode(myId) : utf8.encode('iBayanihan' * 4); // add here the id of the current user
-          final secretKeyBytes = myId != null ? utf8.encode(myId) : utf8.encode('iBayanihan' * 4); // add here the id of the current user
-          final secretKey = SecretKey(secretKeyBytes);
-          final secretBox = SecretBox.fromConcatenation(binaryData, nonceLength: 12, macLength: 16);
-          final clearText = await algorithm.decrypt(
-            secretBox,
-            secretKey: secretKey,
-          );
+          final key = Key.fromUtf8('iBayanihan' * 4);
 
-          final jsonString = utf8.decode(clearText);
+          final iv = IV.fromUtf8('iBayanihan' * 4);
+          final encrypter = Encrypter(AES(key));
+
+          final decrypted = encrypter.decrypt(binaryData, iv: iv);
+
+          final jsonString = utf8.decode(decrypted);
+
+          Logger.debug('Received decrypted data: $jsonString');
+
           final Map<String, dynamic> jsonData = jsonDecode(jsonString);
           final content = NearbyMessageContent.fromJson(jsonData['content']);
           final sender = NearbyDeviceInfo.fromJson(jsonData['sender']);
