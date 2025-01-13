@@ -12,7 +12,8 @@ import 'package:nearby_service/src/utils/random.dart';
 import 'package:nearby_service/src/utils/stream_mapper.dart';
 
 import 'package:cryptography/cryptography.dart';
-import 'package:encrypt/encrypt.dart' as encrypt;
+import 'package:crypto/crypto.dart';
+import 'package:encrypt/encrypt.dart';
 
 part 'ping_manager.dart';
 
@@ -125,47 +126,34 @@ class NearbySocketService {
   // }
   /// for encryption, we can utilize the following
 
-  Future<bool> send(OutgoingNearbyMessage message, [String? recieverId]) async {
-  if (message.isValid) {
-    // log the message
-    Logger.debug('Sending message: $message');
-    if (_socket != null && message.receiver.id == _connectedDeviceId) {
-      final sender = await _service.getCurrentDeviceInfo();
-      if (sender != null) {
-        final jsonString = jsonEncode({
-          'content': message.content.toJson(),
-          'sender': sender.toJson(),
-        });
+    Future<bool> send(OutgoingNearbyMessage message) async {
+    if (message.isValid) {
+      Logger.debug('Sending message: $message');
+      if (_socket != null && message.receiver.id == _connectedDeviceId) {
+        final sender = await _service.getCurrentDeviceInfo();
+        if (sender != null) {
+          final jsonString = jsonEncode({
+            'content': message.content.toJson(),
+            'sender': sender.toJson(),
+          });
 
-        // Encrypt the JSON string
-        // final algorithm = AesGcm.with256bits();
-        // final secretKeyBytes = recieverId != null ? utf8.encode(recieverId) : utf8.encode('iBayanihan' * 4);
-        // final secretKey = SecretKey(secretKeyBytes);
-        // final nonce = algorithm.newNonce();
-        // final secretBox = await algorithm.encrypt(
-        //   utf8.encode(jsonString),
-        //   secretKey: secretKey,
-        //   nonce: nonce,
-        // );
+          // Encrypt the JSON string using the provided encryptAES method
+          final key = Key.fromUtf8('my 32 length key................');
+          final iv = IV.fromLength(16);
+          final encrypter = Encrypter(AES(key));
+          final encrypted = encrypter.encrypt(jsonString, iv: iv);
 
-        final key = Key.fromUtf8('iBayanihan' * 4);
-
-        final iv = IV.fromUtf8('iBayanihan' * 4);
-        final encrypter = Encrypter(AES(key));
-
-        final encrypted = encrypter.encrypt(jsonString, iv: iv);
-
-        Logger.debug('Sending encrypted data: $encrypted');
-        _socket!.add(encrypted);
-        _handleFilesMessage(message);
+          Logger.debug('Sending encrypted binary data: ${encrypted.base64}');
+          _socket!.add(encrypted.bytes);
+          _handleFilesMessage(message);
+        }
+        return true;
       }
-      return true;
+      return false;
+    } else {
+      throw NearbyServiceException.invalidMessage(message.content);
     }
-    return false;
-  } else {
-    throw NearbyServiceException.invalidMessage(message.content);
   }
-}
 
 
   ///
@@ -301,55 +289,53 @@ class NearbySocketService {
   // }
 
 /// for encryption, we can utilize the following
-void _createSocketSubscription(NearbyServiceMessagesListener socketListener, [String? myId]) {
-  Logger.debug('Starting socket subscription');
+  void _createSocketSubscription(NearbyServiceMessagesListener socketListener) {
+    Logger.debug('Starting socket subscription');
 
-  if (_connectedDeviceId != null) {
-    _messagesSubscription = _socket
-        ?.where((e) => e != null)
-        .listen(
-      (binaryData) async {
-        try {
-          Logger.debug('Received encrypted data: $binaryData');
+    if (_connectedDeviceId != null) {
+      _messagesSubscription = _socket
+          ?.where((e) => e != null)
+          .listen(
+        (binaryData) async {
+          try {
+            Logger.debug('Received encrypted data: $binaryData');
 
-          // Decrypt the binary data
-          final key = Key.fromUtf8('iBayanihan' * 4);
+            // Decrypt the binary data
+            final key = Key.fromUtf8('my 32 length key................');
+            final iv = IV.fromLength(16);
+            final encrypter = Encrypter(AES(key));
+            final decrypted = encrypter.decrypt(Encrypted(binaryData), iv: iv);
 
-          final iv = IV.fromUtf8('iBayanihan' * 4);
-          final encrypter = Encrypter(AES(key));
+            final jsonString = utf8.decode(decrypted.bytes);
 
-          final decrypted = encrypter.decrypt(binaryData, iv: iv);
+            Logger.debug('Received decrypted data: $jsonString');
 
-          final jsonString = utf8.decode(decrypted);
-
-          Logger.debug('Received decrypted data: $jsonString');
-
-          final Map<String, dynamic> jsonData = jsonDecode(jsonString);
-          final content = NearbyMessageContent.fromJson(jsonData['content']);
-          final sender = NearbyDeviceInfo.fromJson(jsonData['sender']);
-          final receivedMessage = ReceivedNearbyMessage(
-            content: content,
-            sender: sender,
-          );
-          _handleFilesMessage(receivedMessage);
-          socketListener.onData(receivedMessage);
-        } catch (e) {
+            final Map<String, dynamic> jsonData = jsonDecode(jsonString);
+            final content = NearbyMessageContent.fromJson(jsonData['content']);
+            final sender = NearbyDeviceInfo.fromJson(jsonData['sender']);
+            final receivedMessage = ReceivedNearbyMessage(
+              content: content,
+              sender: sender,
+            );
+            _handleFilesMessage(receivedMessage);
+            socketListener.onData(receivedMessage);
+          } catch (e) {
+            Logger.error(e);
+          }
+        },
+        onDone: () {
+          state.add(CommunicationChannelState.notConnected);
+          socketListener.onDone?.call();
+        },
+        onError: (e, s) {
           Logger.error(e);
-        }
-      },
-      onDone: () {
-        state.add(CommunicationChannelState.notConnected);
-        socketListener.onDone?.call();
-      },
-      onError: (e, s) {
-        Logger.error(e);
-        state.add(CommunicationChannelState.notConnected);
-        socketListener.onError?.call(e, s);
-      },
-      cancelOnError: socketListener.cancelOnError,
-    );
+          state.add(CommunicationChannelState.notConnected);
+          socketListener.onError?.call(e, s);
+        },
+        cancelOnError: socketListener.cancelOnError,
+      );
+    }
   }
-}
 
   void _handleFilesMessage(NearbyMessage message) {
     if (message.content is NearbyMessageFilesRequest ||

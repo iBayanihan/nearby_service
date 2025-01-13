@@ -9,6 +9,7 @@ environment:
   flutter: ">=3.10.0"
 
 dependencies:
+  crypto: ^3.0.6
   cryptography: ^2.7.0
   encrypt: ^5.0.3
   flutter:
