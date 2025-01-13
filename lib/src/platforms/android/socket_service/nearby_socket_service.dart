@@ -140,14 +140,18 @@ class NearbySocketService {
         final algorithm = AesGcm.with256bits();
         final secretKeyBytes = utf8.encode('iBayanihan');
         final secretKey = SecretKey(secretKeyBytes);
-        final nonce = algorithm.newNonce();
+        final nonce = algorithm.newNonce(); // Generate nonce
         final secretBox = await algorithm.encrypt(
           utf8.encode(jsonString),
           secretKey: secretKey,
           nonce: nonce,
         );
 
-        final binaryData = Uint8List.fromList(secretBox.concatenation());
+        // Concatenate nonce, ciphertext, and MAC before sending
+        final binaryData = Uint8List.fromList(
+          [...nonce, ...secretBox.cipherText, ...secretBox.mac]
+        );
+
         Logger.debug('Sending encrypted binary data: $binaryData');
         _socket!.add(binaryData);
         _handleFilesMessage(message);
@@ -159,6 +163,7 @@ class NearbySocketService {
     throw NearbyServiceException.invalidMessage(message.content);
   }
 }
+
 
 
   ///
@@ -305,11 +310,24 @@ void _createSocketSubscription(NearbyServiceMessagesListener socketListener) {
         try {
           Logger.debug('Received encrypted binary data: $binaryData');
 
-          // Decrypt the binary data
+          // Ensure that the binary data is correctly split into nonce, ciphertext, and MAC
+          final nonceLength = 12; // The length of the nonce
+          final macLength = 16;  // The length of the MAC
+          final nonce = binaryData.sublist(0, nonceLength);
+          final mac = binaryData.sublist(binaryData.length - macLength);
+          final cipherText = binaryData.sublist(nonceLength, binaryData.length - macLength);
+
+          // Reconstruct the SecretBox
           final algorithm = AesGcm.with256bits();
           final secretKeyBytes = utf8.encode('iBayanihan');
           final secretKey = SecretKey(secretKeyBytes);
-          final secretBox = SecretBox.fromConcatenation(binaryData, nonceLength: 12, macLength: 16);
+          final secretBox = SecretBox(
+            cipherText,
+            nonce: nonce,
+            mac: mac,
+          );
+
+          // Decrypt the binary data
           final clearText = await algorithm.decrypt(
             secretBox,
             secretKey: secretKey,
@@ -344,6 +362,7 @@ void _createSocketSubscription(NearbyServiceMessagesListener socketListener) {
     );
   }
 }
+
 
   void _handleFilesMessage(NearbyMessage message) {
     if (message.content is NearbyMessageFilesRequest ||
