@@ -12,6 +12,7 @@ import 'package:nearby_service/src/utils/random.dart';
 import 'package:nearby_service/src/utils/stream_mapper.dart';
 
 import 'package:cryptography/cryptography.dart';
+import 'package:encrypt/encrypt.dart' as encrypt;
 
 part 'ping_manager.dart';
 
@@ -123,7 +124,6 @@ class NearbySocketService {
   //   }
   // }
   /// for encryption, we can utilize the following
-  /// import 'package:encrypt/encrypt.dart' as encrypt;
 
   Future<bool> send(OutgoingNearbyMessage message, [String? recieverId]) async {
   if (message.isValid) {
