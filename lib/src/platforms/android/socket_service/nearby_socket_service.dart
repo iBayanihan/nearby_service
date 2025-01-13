@@ -139,7 +139,8 @@ class NearbySocketService {
 
         // Encrypt the JSON string
         final algorithm = AesGcm.with256bits();
-        final secretKeyBytes = recieverId != null ? utf8.encode(recieverId) : utf8.encode('iBayanihan');
+        // final secretKeyBytes = recieverId != null ? utf8.encode(recieverId) : utf8.encode('iBayanihan');
+        final secretKeyBytes = recieverId != null ? utf8.encode('iBayanihan') : utf8.encode('iBayanihan');
         final secretKey = SecretKey(secretKeyBytes);
         final nonce = algorithm.newNonce();
         final secretBox = await algorithm.encrypt(
@@ -308,7 +309,8 @@ void _createSocketSubscription(NearbyServiceMessagesListener socketListener, [St
 
           // Decrypt the binary data
           final algorithm = AesGcm.with256bits();
-          final secretKeyBytes = myId != null ? utf8.encode(myId) : utf8.encode('iBayanihan'); // add here the id of the current user
+          // final secretKeyBytes = myId != null ? utf8.encode(myId) : utf8.encode('iBayanihan'); // add here the id of the current user
+          final secretKeyBytes = myId != null ? utf8.encode('iBayanihan') : utf8.encode('iBayanihan');
 
           final secretKey = SecretKey(secretKeyBytes);
           final secretBox = SecretBox.fromConcatenation(binaryData, nonceLength: 12, macLength: 16);
