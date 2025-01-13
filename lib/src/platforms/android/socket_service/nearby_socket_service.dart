@@ -155,7 +155,7 @@ class NearbySocketService {
 
         final encrypted = encrypter.encrypt(jsonString, iv: iv);
 
-        Logger.debug('Sending encrypted binary data: $encrypted');
+        Logger.debug('Sending encrypted data: $encrypted');
         _socket!.add(encrypted);
         _handleFilesMessage(message);
       }
