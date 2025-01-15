@@ -115,15 +115,17 @@ class NearbyServiceBroadcastReceiver(
             wifiInfo = info
             if (info.isGroupOwner && peers.isEmpty())
                 try {
-                    wifiManager.requestGroupInfo(wifiChannel) { group: WifiP2pGroup ->
-                        peers = group.clientList.map { t: WifiP2pDevice -> t.toJsonString() }
-                            .toMutableList()
-
+                    wifiManager.requestGroupInfo(wifiChannel) { group: WifiP2pGroup? ->
+                        if (group != null) {
+                            peers = group.clientList.map { t: WifiP2pDevice -> t.toJsonString() }
+                                .toMutableList()
+                        } else {
+                            Logger.e("Group is null")
+                        }
                     }
                 } catch (e: SecurityException) {
                     e.message?.let { Logger.e(it) }
                 }
         }
-
     }
 }
